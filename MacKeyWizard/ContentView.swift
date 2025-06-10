@@ -12,6 +12,7 @@ struct ContentView: View {
     @StateObject private var accessibilityManager = AccessibilityManager()
     @State private var searchText = ""
     @State private var isExpanded = false
+    @State private var previousApp: NSRunningApplication?
     
     var filteredShortcuts: [Shortcut] {
         shortcutManager.searchShortcuts(query: searchText)
@@ -55,6 +56,10 @@ struct ContentView: View {
                         TextField("Search shortcuts...", text: $searchText)
                             .textFieldStyle(PlainTextFieldStyle())
                             .font(.system(size: 16))
+                            .onAppear {
+                                // Store the previous app when the search field appears
+                                previousApp = NSWorkspace.shared.frontmostApplication
+                            }
                         if !searchText.isEmpty {
                             Button(action: { searchText = "" }) {
                                 Image(systemName: "xmark.circle.fill")
@@ -85,7 +90,8 @@ struct ContentView: View {
                                             
                                             // Small delay to ensure window is hidden
                                             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                                                shortcutManager.executeShortcut(shortcut)
+                                                // Execute the shortcut
+                                                shortcutManager.executeShortcut(shortcut, previousApp: previousApp)
                                             }
                                         }
                                     
@@ -105,6 +111,10 @@ struct ContentView: View {
             .background(Color(NSColor.windowBackgroundColor))
             .cornerRadius(10)
             .shadow(radius: 10)
+            .onAppear {
+                // Store the previous app when the view appears
+                previousApp = NSWorkspace.shared.frontmostApplication
+            }
         }
     }
 }

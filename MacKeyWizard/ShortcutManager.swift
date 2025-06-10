@@ -159,58 +159,69 @@ class ShortcutManager: ObservableObject {
         return results
     }
     
-    func executeShortcut(_ shortcut: Shortcut) {
+    func executeShortcut(_ shortcut: Shortcut, previousApp: NSRunningApplication? = nil) {
         // Check if we have accessibility permission
         guard AXIsProcessTrusted() else {
             print("Accessibility permission not granted")
             return
         }
         
-        // Get the window that was active before our app
-        let workspace = NSWorkspace.shared
-        let activeApp = workspace.frontmostApplication
+        // Store our app's window
+        guard let ourWindow = NSApplication.shared.windows.first else { return }
+        
+        // Hide our window first
+        ourWindow.orderOut(nil)
+        
+        // Use the provided previous app or get the current frontmost app
+        let appToActivate = previousApp ?? NSWorkspace.shared.frontmostApplication
         
         // Activate the previous application
-        if let previousApp = activeApp {
-            previousApp.activate(options: .activateIgnoringOtherApps)
-            
-            // Small delay to ensure the app is activated
-            Thread.sleep(forTimeInterval: 0.1)
-        }
-        
-        // Create the event source
-        let source = CGEventSource(stateID: .hidSystemState)
-        
-        // Convert string keys to CGKeyCode and flags
-        var flags: CGEventFlags = []
-        var keyCodes: [CGKeyCode] = []
-        
-        for key in shortcut.keys {
-            switch key {
-            case "COMMAND":
-                flags.insert(.maskCommand)
-            case "SHIFT":
-                flags.insert(.maskShift)
-            case "OPTION":
-                flags.insert(.maskAlternate)
-            case "CONTROL":
-                flags.insert(.maskControl)
-            default:
-                if let keyCode = getKeyCode(for: key) {
-                    keyCodes.append(keyCode)
+        if let appToActivate = appToActivate {
+            // Small delay to ensure our window is hidden
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
+                guard let self = self else { return }
+                
+                // Activate the previous app
+                appToActivate.activate(options: .activateIgnoringOtherApps)
+                
+                // Small delay to ensure the app is activated
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    // Create the event source
+                    let source = CGEventSource(stateID: .hidSystemState)
+                    
+                    // Convert string keys to CGKeyCode and flags
+                    var flags: CGEventFlags = []
+                    var keyCodes: [CGKeyCode] = []
+                    
+                    for key in shortcut.keys {
+                        switch key {
+                        case "COMMAND":
+                            flags.insert(.maskCommand)
+                        case "SHIFT":
+                            flags.insert(.maskShift)
+                        case "OPTION":
+                            flags.insert(.maskAlternate)
+                        case "CONTROL":
+                            flags.insert(.maskControl)
+                        default:
+                            if let keyCode = self.getKeyCode(for: key) {
+                                keyCodes.append(keyCode)
+                            }
+                        }
+                    }
+                    
+                    // Send the key events
+                    for keyCode in keyCodes {
+                        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
+                        keyDown?.flags = flags
+                        keyDown?.post(tap: .cghidEventTap)
+                        
+                        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
+                        keyUp?.flags = flags
+                        keyUp?.post(tap: .cghidEventTap)
+                    }
                 }
             }
-        }
-        
-        // Send the key events
-        for keyCode in keyCodes {
-            let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
-            keyDown?.flags = flags
-            keyDown?.post(tap: .cghidEventTap)
-            
-            let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
-            keyUp?.flags = flags
-            keyUp?.post(tap: .cghidEventTap)
         }
     }
     
