@@ -160,69 +160,88 @@ class ShortcutManager: ObservableObject {
     }
     
     func executeShortcut(_ shortcut: Shortcut, previousApp: NSRunningApplication? = nil) {
-        // Check if we have accessibility permission
         guard AXIsProcessTrusted() else {
             print("Accessibility permission not granted")
             return
         }
-        
-        // Store our app's window
         guard let ourWindow = NSApplication.shared.windows.first else { return }
-        
-        // Hide our window first
         ourWindow.orderOut(nil)
-        
-        // Use the provided previous app or get the current frontmost app
         let appToActivate = previousApp ?? NSWorkspace.shared.frontmostApplication
-        
-        // Activate the previous application
         if let appToActivate = appToActivate {
-            // Small delay to ensure our window is hidden
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) { [weak self] in
                 guard let self = self else { return }
-                
-                // Activate the previous app
                 appToActivate.activate(options: .activateIgnoringOtherApps)
-                
-                // Small delay to ensure the app is activated
                 DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-                    // Create the event source
-                    let source = CGEventSource(stateID: .hidSystemState)
-                    
-                    // Convert string keys to CGKeyCode and flags
-                    var flags: CGEventFlags = []
-                    var keyCodes: [CGKeyCode] = []
-                    
+                    // Hybrid: Use screencapture for screenshot shortcuts
+                    let keys = shortcut.keys
+                    if keys == ["COMMAND", "SHIFT", "3"] {
+                        self.runScreencapture(args: ["~/Desktop/Screen.png"])
+                        return
+                    } else if keys == ["COMMAND", "SHIFT", "4"] {
+                        self.runScreencapture(args: ["-i", "~/Desktop/Screen.png"])
+                        return
+                    } else if keys == ["COMMAND", "SHIFT", "4", "SPACE"] {
+                        self.runScreencapture(args: ["-iW", "~/Desktop/Screen.png"])
+                        return
+                    } else if keys == ["COMMAND", "SHIFT", "5"] {
+                        self.runScreenshotUI()
+                        return
+                    } else if keys == ["COMMAND", "SHIFT", "6"] {
+                        self.runScreencapture(args: ["-T", "0", "-c", "-D", "2"])
+                        return
+                    }
+                    // Use AppleScript for common shortcuts
+                    if let (keystroke, modifiers) = self.appleScriptShortcut(for: keys) {
+                        self.runAppleScriptKeystroke(keystroke: keystroke, modifiers: modifiers)
+                        return
+                    }
+                    // Fallback: Use CGEvent for all other shortcuts
+                    var modifiers: [CGKeyCode] = []
+                    var nonModifiers: [CGKeyCode] = []
                     for key in shortcut.keys {
                         switch key {
-                        case "COMMAND":
-                            flags.insert(.maskCommand)
-                        case "SHIFT":
-                            flags.insert(.maskShift)
-                        case "OPTION":
-                            flags.insert(.maskAlternate)
-                        case "CONTROL":
-                            flags.insert(.maskControl)
+                        case "COMMAND": modifiers.append(0x37)
+                        case "SHIFT": modifiers.append(0x38)
+                        case "OPTION": modifiers.append(0x3A)
+                        case "CONTROL": modifiers.append(0x3B)
                         default:
                             if let keyCode = self.getKeyCode(for: key) {
-                                keyCodes.append(keyCode)
+                                nonModifiers.append(keyCode)
                             }
                         }
                     }
-                    
-                    // Send the key events
-                    for keyCode in keyCodes {
-                        let keyDown = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
-                        keyDown?.flags = flags
-                        keyDown?.post(tap: .cghidEventTap)
-                        
-                        let keyUp = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
-                        keyUp?.flags = flags
-                        keyUp?.post(tap: .cghidEventTap)
+                    let source = CGEventSource(stateID: .hidSystemState)
+                    for mod in modifiers {
+                        let down = CGEvent(keyboardEventSource: source, virtualKey: mod, keyDown: true)
+                        down?.post(tap: .cghidEventTap)
+                    }
+                    for keyCode in nonModifiers {
+                        let down = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: true)
+                        down?.post(tap: .cghidEventTap)
+                        let up = CGEvent(keyboardEventSource: source, virtualKey: keyCode, keyDown: false)
+                        up?.post(tap: .cghidEventTap)
+                    }
+                    for mod in modifiers.reversed() {
+                        let up = CGEvent(keyboardEventSource: source, virtualKey: mod, keyDown: false)
+                        up?.post(tap: .cghidEventTap)
                     }
                 }
             }
         }
+    }
+    
+    private func runScreencapture(args: [String]) {
+        let process = Process()
+        process.launchPath = "/usr/sbin/screencapture"
+        process.arguments = args
+        process.launch()
+    }
+    
+    private func runScreenshotUI() {
+        // Open the screenshot UI (⌘⇧5)
+        let script = "tell application \"System Events\" to key code 60 using {command down, shift down}"
+        let appleScript = NSAppleScript(source: script)
+        appleScript?.executeAndReturnError(nil)
     }
     
     private func getKeyCode(for key: String) -> CGKeyCode? {
@@ -264,7 +283,36 @@ class ShortcutManager: ObservableObject {
         case "8": return 0x1C
         case "9": return 0x19
         case "0": return 0x1D
+        case "F4": return 0x76
         default: return nil
         }
+    }
+    
+    // Map common shortcuts to AppleScript keystroke and modifiers
+    private func appleScriptShortcut(for keys: [String]) -> (String, [String])? {
+        // Only support single non-modifier key
+        let mods = keys.filter { ["COMMAND", "SHIFT", "OPTION", "CONTROL"].contains($0) }
+        let nonMods = keys.filter { !["COMMAND", "SHIFT", "OPTION", "CONTROL"].contains($0) }
+        guard nonMods.count == 1, let key = nonMods.first else { return nil }
+        var modifiers: [String] = []
+        if mods.contains("COMMAND") { modifiers.append("command down") }
+        if mods.contains("SHIFT") { modifiers.append("shift down") }
+        if mods.contains("OPTION") { modifiers.append("option down") }
+        if mods.contains("CONTROL") { modifiers.append("control down") }
+        // Supported keys
+        let supported: Set<String> = [
+            "A", "C", "V", "X", "Z", "F", "G", "J", "B", "I", "U", "Y", "P", "S", "O", "N", "M", "L", "D", "E", "W", "Q", "T", "K", "R", "H", "J", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0", ",", ".", ";", "'", "/", "\\", "[", "]", "-", "=", "`"
+        ]
+        if supported.contains(key) {
+            return (key.lowercased(), modifiers)
+        }
+        return nil
+    }
+
+    private func runAppleScriptKeystroke(keystroke: String, modifiers: [String]) {
+        let modsString = modifiers.isEmpty ? "" : " using {" + modifiers.joined(separator: ", ") + "}"
+        let script = "tell application \"System Events\" to keystroke \"\(keystroke)\"\(modsString)"
+        let appleScript = NSAppleScript(source: script)
+        appleScript?.executeAndReturnError(nil)
     }
 } 
