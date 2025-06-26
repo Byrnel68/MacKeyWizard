@@ -1,0 +1,10 @@
+{
+    "Name": "Screenshots",
+    "Shortcuts": [
+        {"Description": "Screenshot Entire Screen", "Keys": ["COMMAND", "SHIFT", "3"]},
+        {"Description": "Screenshot Selected Area", "Keys": ["COMMAND", "SHIFT", "4"]},
+        {"Description": "Screenshot Window", "Keys": ["COMMAND", "SHIFT", "4", "SPACE"]},
+        {"Description": "Screenshot and Recording Options", "Keys": ["COMMAND", "SHIFT", "5"]},
+        {"Description": "Screenshot Touch Bar", "Keys": ["COMMAND", "SHIFT", "6"]}
+    ]
+} 

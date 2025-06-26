@@ -40,7 +40,32 @@ struct DefaultShortcuts {
             {
                 "Description": "Screenshot Window",
                 "Keys": ["COMMAND", "SHIFT", "4", "SPACE"]
+            },
+            {
+                "Description": "Find",
+                "Keys": ["COMMAND", "F"]
+            },
+            {
+                "Description": "Find Next",
+                "Keys": ["COMMAND", "G"]
+            },
+            {
+                "Description": "Find Previous",
+                "Keys": ["COMMAND", "SHIFT", "G"]
+            },
+            {
+                "Description": "Open Spotlight Search",
+                "Keys": ["COMMAND", "SPACE"]
+            },
+            {
+                "Description": "Switch Between Applications",
+                "Keys": ["COMMAND", "TAB"]
+            },
+            {
+                "Description": "New Terminal Window",
+                "Keys": ["COMMAND", "N"]
             }
+            
         ]
     }
     """

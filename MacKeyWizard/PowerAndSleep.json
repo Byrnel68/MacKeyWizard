@@ -1,0 +1,10 @@
+{
+    "Name": "Power and Sleep",
+    "Shortcuts": [
+        {"Description": "Lock Screen", "Keys": ["CONTROL", "COMMAND", "Q"]},
+        {"Description": "Put Displays to Sleep", "Keys": ["CONTROL", "SHIFT", "POWER"]},
+        {"Description": "Display Power Dialog", "Keys": ["CONTROL", "POWER"]},
+        {"Description": "Force Restart", "Keys": ["CONTROL", "COMMAND", "POWER"]},
+        {"Description": "Put Computer to Sleep", "Keys": ["COMMAND", "OPTION", "POWER"]}
+    ]
+} 

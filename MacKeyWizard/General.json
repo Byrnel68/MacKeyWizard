@@ -1,0 +1,23 @@
+{
+    "Name": "General",
+    "Shortcuts": [
+        {"Description": "Copy", "Keys": ["COMMAND", "C"]},
+        {"Description": "Paste", "Keys": ["COMMAND", "V"]},
+        {"Description": "Cut", "Keys": ["COMMAND", "X"]},
+        {"Description": "Select All", "Keys": ["COMMAND", "A"]},
+        {"Description": "Undo", "Keys": ["COMMAND", "Z"]},
+        {"Description": "Redo", "Keys": ["COMMAND", "SHIFT", "Z"]},
+        {"Description": "Find", "Keys": ["COMMAND", "F"]},
+        {"Description": "Find Next", "Keys": ["COMMAND", "G"]},
+        {"Description": "Find Previous", "Keys": ["COMMAND", "SHIFT", "G"]},
+        {"Description": "Open Spotlight Search", "Keys": ["COMMAND", "SPACE"]},
+        {"Description": "Switch Between Applications", "Keys": ["COMMAND", "TAB"]},
+        {"Description": "Switch Between Windows of Same App", "Keys": ["COMMAND", "`"]},
+        {"Description": "Quit Application", "Keys": ["COMMAND", "Q"]},
+        {"Description": "Close Window", "Keys": ["COMMAND", "W"]},
+        {"Description": "Minimize Window", "Keys": ["COMMAND", "M"]},
+        {"Description": "Hide Application", "Keys": ["COMMAND", "H"]},
+        {"Description": "Hide All Other Applications", "Keys": ["COMMAND", "OPTION", "H"]},
+        {"Description": "Force Quit Applications", "Keys": ["COMMAND", "OPTION", "ESCAPE"]}
+    ]
+} 

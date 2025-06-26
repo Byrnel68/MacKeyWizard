@@ -40,8 +40,8 @@ class ShortcutManager: ObservableObject {
         // Create the shortcuts directory if it doesn't exist
         try? fileManager.createDirectory(at: shortcutsDirectory, withIntermediateDirectories: true)
         
-        // Create default shortcuts if none exist
-        DefaultShortcuts.createDefaultShortcutsIfNeeded(in: shortcutsDirectory)
+        // Copy bundled .json files if needed
+        copyBundledShortcutsIfNeeded()
         
         // Load initial shortcuts
         loadShortcuts()
@@ -104,22 +104,21 @@ class ShortcutManager: ObservableObject {
     
     private func loadShortcuts() {
         do {
+            print("Looking for shortcuts in: \(shortcutsDirectory.path)")
             let fileURLs = try fileManager.contentsOfDirectory(at: shortcutsDirectory, includingPropertiesForKeys: nil)
-            print("Found \(fileURLs.count) shortcut files")
-            
-            shortcutGroups = try fileURLs.compactMap { url in
-                print("Loading shortcuts from: \(url.lastPathComponent)")
+            print("Found files: \(fileURLs.map { $0.lastPathComponent })")
+            let jsonFiles = fileURLs.filter { $0.pathExtension.lowercased() == "json" }
+            print("JSON files to load: \(jsonFiles.map { $0.lastPathComponent })")
+            shortcutGroups = try jsonFiles.compactMap { url in
+                print("Attempting to load: \(url.lastPathComponent)")
                 let data = try Data(contentsOf: url)
                 let group = try JSONDecoder().decode(ShortcutGroup.self, from: data)
                 print("Loaded group: \(group.name) with \(group.shortcuts.count) shortcuts")
-                print("Shortcuts in group: \(group.shortcuts.map { $0.description })")
                 return group
             }
-            
-            print("Total shortcut groups: \(shortcutGroups.count)")
+            print("Total shortcut groups loaded: \(shortcutGroups.count)")
             let allShortcuts = shortcutGroups.flatMap { $0.shortcuts }
-            print("Total shortcuts: \(allShortcuts.count)")
-            print("All shortcut descriptions: \(allShortcuts.map { $0.description })")
+            print("Total shortcuts loaded: \(allShortcuts.count)")
         } catch {
             print("Error loading shortcuts: \(error)")
         }
@@ -314,5 +313,21 @@ class ShortcutManager: ObservableObject {
         let script = "tell application \"System Events\" to keystroke \"\(keystroke)\"\(modsString)"
         let appleScript = NSAppleScript(source: script)
         appleScript?.executeAndReturnError(nil)
+    }
+    
+    private func copyBundledShortcutsIfNeeded() {
+        let bundle = Bundle.main
+        guard let resourceURLs = bundle.urls(forResourcesWithExtension: "json", subdirectory: nil) else { return }
+        for url in resourceURLs {
+            let destURL = shortcutsDirectory.appendingPathComponent(url.lastPathComponent)
+            if !fileManager.fileExists(atPath: destURL.path) {
+                do {
+                    try fileManager.copyItem(at: url, to: destURL)
+                    print("Copied \(url.lastPathComponent) to shortcuts directory.")
+                } catch {
+                    print("Error copying \(url.lastPathComponent): \(error)")
+                }
+            }
+        }
     }
 } 
